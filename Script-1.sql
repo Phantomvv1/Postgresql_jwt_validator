@@ -64,8 +64,8 @@ begin
     computed_sig_b64 := regexp_replace(computed_sig_b64, '\n', ''); -- there was somehow a new line while I was testing the function
     
     -- Compare the computed signature with the provided one.
-	raise notice 'Computed signature: %', computed_sig_b64;
-	raise notice 'Real signature: %', signature;
+    -- raise notice 'Computed signature: %', computed_sig_b64;
+    -- raise notice 'Real signature: %', signature;
     return computed_sig_b64 = signature;
 end;
 $$;

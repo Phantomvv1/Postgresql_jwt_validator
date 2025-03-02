@@ -17,7 +17,16 @@ $$;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-create or replace function verify_jwt(jwt text, secret text, signing_method text)
+create table if not exists auth (id serial not null, username text, secret text);
+insert into auth (username, secret) values
+('some', 'some_secret'),
+('any', 'any_secret');
+
+insert into auth (username, secret) values('test', 'some_key');
+
+select * from auth a ;
+
+create or replace function verify_jwt(jwt text, "userName" text, signing_method text)
 returns boolean language plpgsql as
 $$
 declare
@@ -27,6 +36,7 @@ declare
     signing_input text;
     computed_sig bytea;
     computed_sig_b64 text;
+	secret text := (select secret from auth a where a.username = "userName");
 begin
     -- Extract parts using your decode_jwt function or similar logic
     with parts as (
@@ -61,20 +71,21 @@ begin
     -- Convert to URL-safe base64: replace characters and remove padding.
     computed_sig_b64 := translate(computed_sig_b64, '+/', '-_');
     computed_sig_b64 := regexp_replace(computed_sig_b64, '=+$', '');
-    computed_sig_b64 := regexp_replace(computed_sig_b64, '\n', ''); -- there was somehow a new line while I was testing the function
+	computed_sig_b64 := regexp_replace(computed_sig_b64, '\n', ''); -- there was somehow a new line while I was testing the function
     
     -- Compare the computed signature with the provided one.
-    -- raise notice 'Computed signature: %', computed_sig_b64;
-    -- raise notice 'Real signature: %', signature;
+	--	raise notice 'Computed signature: %', computed_sig_b64;
+	--	raise notice 'Real signature: %', signature;
     return computed_sig_b64 = signature;
 end;
 $$;
 
 
+drop function verify_jwt(jwt text, username text, signing_method text);
 -- Unit test -------------------------------------
 
 select * from decode_jwt('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3NDAyMTc2NDksImV4cCI6MTc3MTc1MzY0OSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm5hbWUiOiJKb2huIERvZSIsInNvbWVfaW50IjoiMTk4MjA4OSJ9.mI1J5XgumcHBLMCH8gq4-znIwJ2V_LY8XntEU5ccdS7MzMcvtNfExBEb-swvkiTNbEzgyAu-lcwo6u3kowmhTQ');
 select verify_jwt(
   'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJPbmxpbmUgSldUIEJ1aWxkZXIiLCJpYXQiOjE3NDAyMTc2NDksImV4cCI6MTc3MTc1MzY0OSwiYXVkIjoid3d3LmV4YW1wbGUuY29tIiwic3ViIjoianJvY2tldEBleGFtcGxlLmNvbSIsIm5hbWUiOiJKb2huIERvZSIsInNvbWVfaW50IjoiMTk4MjA4OSJ9.mI1J5XgumcHBLMCH8gq4-znIwJ2V_LY8XntEU5ccdS7MzMcvtNfExBEb-swvkiTNbEzgyAu-lcwo6u3kowmhTQ',
-  'some_key', 'sha512'
+  'test', 'sha512'
 );
